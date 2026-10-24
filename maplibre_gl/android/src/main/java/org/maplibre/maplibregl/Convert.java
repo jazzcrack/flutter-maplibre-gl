@@ -311,6 +311,10 @@ static LocationEngineRequest toLocationEngineRequest(Object o) {
     if (attributionButtonGravity != null) {
       sink.setAttributionButtonGravity(toInt(attributionButtonGravity));
     }
+    final Object attributionButtonEnabled = data.get("attributionButtonEnabled");
+    if (attributionButtonEnabled != null) {
+      sink.setAttributionButtonEnabled(toBoolean(attributionButtonEnabled));
+    }
     final Object attributionButtonMargins = data.get("attributionButtonMargins");
     if (attributionButtonMargins != null) {
       final List attributionButtonMarginsData = toList(attributionButtonMargins);

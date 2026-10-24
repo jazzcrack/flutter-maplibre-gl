@@ -228,6 +228,11 @@ class MapLibreMapBuilder implements MapLibreMapOptionsSink {
   }
 
   @Override
+  public void setAttributionButtonEnabled(boolean enabled) {
+    options.attributionEnabled(enabled);
+  }
+
+  @Override
   public void setAttributionButtonMargins(int x, int y) {
     switch (options.getAttributionGravity()) {
       case Gravity.TOP | Gravity.START:

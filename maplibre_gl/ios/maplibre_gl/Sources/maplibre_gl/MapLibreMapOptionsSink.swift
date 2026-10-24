@@ -21,6 +21,8 @@ protocol MapLibreMapOptionsSink {
     func setCompassViewMargins(x: Double, y: Double)
     func setAttributionButtonMargins(x: Double, y: Double)
     func setAttributionButtonPosition(position: MLNOrnamentPosition)
+    // fahrplaner.de patch: native Attribution ein-/ausblenden.
+    func setAttributionButtonEnabled(enabled: Bool)
     func setFeatureTapsTriggersMapClick(triggers: Bool)
     func setLocationEngineProperties(enableHighAccuracy: Bool, distanceFilter: Double)
 }

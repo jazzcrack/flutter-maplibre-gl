@@ -2322,6 +2322,10 @@ class MapLibreMapController: NSObject, FlutterPlatformView, MLNMapViewDelegate, 
         mapView.attributionButtonPosition = position
     }
 
+    func setAttributionButtonEnabled(enabled: Bool) {
+        mapView.attributionButton.isHidden = !enabled
+    }
+
     func setFeatureTapsTriggersMapClick(triggers: Bool) {
         featureTapsTriggersMapClick = triggers
     }

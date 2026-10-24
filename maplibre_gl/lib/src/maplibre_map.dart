@@ -40,6 +40,7 @@ class MapLibreMap extends StatefulWidget {
     this.compassViewMargins,
     this.attributionButtonPosition = AttributionButtonPosition.bottomRight,
     this.attributionButtonMargins,
+    this.attributionButtonEnabled = true,
     this.scaleControlEnabled = false,
     this.scaleControlPosition = ScaleControlPosition.bottomLeft,
     this.scaleControlUnit = ScaleControlUnit.metric,
@@ -252,6 +253,12 @@ class MapLibreMap extends StatefulWidget {
   /// different defaults.
   final Point? attributionButtonMargins;
 
+  /// fahrplaner.de patch: shows (default) or hides the native attribution
+  /// button, e.g. when the app shows its own attribution with the same
+  /// information. Android: UiSettings.isAttributionEnabled, iOS:
+  /// MLNMapView.attributionButton.isHidden.
+  final bool attributionButtonEnabled;
+
   /// True if the scale control should be shown on the map.
   /// Defaults to false.
   /// **Web only** - has no effect on other platforms.
@@ -448,6 +455,7 @@ class MapLibreMapOptions {
     this.compassViewMargins,
     this.attributionButtonPosition,
     this.attributionButtonMargins,
+    this.attributionButtonEnabled,
     this.scaleControlEnabled,
     this.scaleControlPosition,
     this.scaleControlUnit,
@@ -481,6 +489,7 @@ class MapLibreMapOptions {
         compassViewMargins: map.compassViewMargins,
         attributionButtonPosition: map.attributionButtonPosition,
         attributionButtonMargins: map.attributionButtonMargins,
+        attributionButtonEnabled: map.attributionButtonEnabled,
         scaleControlEnabled: map.scaleControlEnabled,
         scaleControlPosition: map.scaleControlPosition,
         scaleControlUnit: map.scaleControlUnit,
@@ -528,6 +537,8 @@ class MapLibreMapOptions {
   final AttributionButtonPosition? attributionButtonPosition;
 
   final Point? attributionButtonMargins;
+
+  final bool? attributionButtonEnabled;
 
   final bool? scaleControlEnabled;
 
@@ -593,6 +604,7 @@ class MapLibreMapOptions {
       'attributionButtonMargins',
       pointToArray(attributionButtonMargins),
     );
+    addIfNonNull('attributionButtonEnabled', attributionButtonEnabled);
     addIfNonNull('scaleControlEnabled', scaleControlEnabled);
     addIfNonNull('scaleControlPosition', scaleControlPosition?.index);
     addIfNonNull('scaleControlUnit', scaleControlUnit?.index);

@@ -50,6 +50,9 @@ internal interface MapLibreMapOptionsSink {
 
     fun setAttributionButtonMargins(x: Int, y: Int)
 
+    // fahrplaner.de patch: native Attribution ein-/ausblenden.
+    fun setAttributionButtonEnabled(enabled: Boolean)
+
     fun setLocationEngineProperties(locationEngineRequest: LocationEngineRequest)
 
     fun setForegroundLoadColor(loadColor: Int)
