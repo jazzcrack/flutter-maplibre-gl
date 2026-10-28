@@ -24,6 +24,24 @@ class OfflinePackDownloader {
     /// the result method being called multiple times
     private var isCompleted = false
 
+    /// fahrplaner.de patch 2: MLNOfflinePackError is posted for single failed
+    /// resources (timeouts, HTTP 429/5xx) and MapLibre retries them. Only give
+    /// up when errors keep coming without any progress.
+    private var errorsWithoutProgress = 0
+    private var lastCompletedCount: UInt64 = 0
+    private static let maxErrorsWithoutProgress = 50
+
+    /// fahrplaner.de patch 2: `result` was already answered with the region in
+    /// onPackCreated. Answering again (on success, error, delete) replied
+    /// several times to one method call. Later outcomes go via the event
+    /// channel only.
+    private var resultSent = false
+    private func reply(_ value: Any?) {
+        guard !resultSent else { return }
+        resultSent = true
+        result(value)
+    }
+
     // MARK: Initializers
 
     init(
@@ -91,7 +109,7 @@ class OfflinePackDownloader {
             OfflineManagerUtils.activePacks[region.id] = pack
             pack.resume()
             // Provide region with generated
-            result(String(data: regionData, encoding: .utf8))
+            reply(String(data: regionData, encoding: .utf8))
             channelHandler.onStart()
         } else {
             onPackCreationError(error: OfflinePackError.InvalidPackData)
@@ -105,7 +123,7 @@ class OfflinePackDownloader {
             errorMessage: error?.localizedDescription,
             errorDetails: nil
         )
-        result(FlutterError(
+        reply(FlutterError(
             code: "mapboxInvalidRegionDefinition",
             message: error?.localizedDescription,
             details: nil
@@ -124,6 +142,10 @@ class OfflinePackDownloader {
             requiredResourceCount: packProgress.countOfResourcesExpected,
             completedResourceCount: packProgress.countOfResourcesCompleted
         )
+        if packProgress.countOfResourcesCompleted > lastCompletedCount {
+            lastCompletedCount = packProgress.countOfResourcesCompleted
+            errorsWithoutProgress = 0
+        }
         // Check if downloading is complete
         if pack.state == .complete {
             // set download state to inactive
@@ -132,12 +154,12 @@ class OfflinePackDownloader {
             guard !isCompleted else { return }
             isCompleted = true
             channelHandler.onSuccess()
-            result(nil)
+            reply(nil)
             if let region = OfflineRegion.fromOfflinePack(pack) {
                 OfflineManagerUtils.activePacks.removeValue(forKey: region.id)
                 OfflineManagerUtils.releaseDownloader(id: region.id)
             }
-        } else {
+        } else if !isCompleted {
             channelHandler.onProgress(
                 progress: downloadProgress,
                 completedResourceCount: packProgress.countOfResourcesCompleted,
@@ -148,30 +170,36 @@ class OfflinePackDownloader {
     }
 
     @objc private func onPackDownloadError(notification: NSNotification) {
-        guard let pack = notification.object as? MLNOfflinePack,
+        guard !isCompleted,
+              let pack = notification.object as? MLNOfflinePack,
               verifyPack(pack: pack) else { return }
         let error = notification.userInfo?[MLNOfflinePackUserInfoKey.error] as? NSError
-        print("Pack download error: \(String(describing: error?.localizedDescription))")
-        // set download state to inactive
+        errorsWithoutProgress += 1
+        print("Pack download error (\(errorsWithoutProgress)): \(String(describing: error?.localizedDescription))")
+        // Recoverable: MapLibre retries the resource, keep downloading.
+        guard errorsWithoutProgress >= OfflinePackDownloader.maxErrorsWithoutProgress else { return }
+        // Give up: stop the pack, report once, remove the partial pack.
         isCompleted = true
+        pack.suspend()
         channelHandler.onError(
             errorCode: "Downloading error",
             errorMessage: error?.localizedDescription,
             errorDetails: nil
         )
-        result(FlutterError(
+        reply(FlutterError(
             code: "Downloading error",
             message: error?.localizedDescription,
             details: nil
         ))
         if let region = OfflineRegion.fromOfflinePack(pack) {
             OfflineManagerUtils.activePacks.removeValue(forKey: region.id)
-            OfflineManagerUtils.deleteRegion(result: result, id: region.id)
+            OfflineManagerUtils.deleteRegion(result: { _ in }, id: region.id)
         }
     }
 
     @objc private func onMaximumAllowedMapboxTiles(notification: NSNotification) {
-        guard let pack = notification.object as? MLNOfflinePack,
+        guard !isCompleted,
+              let pack = notification.object as? MLNOfflinePack,
               verifyPack(pack: pack) else { return }
         let maximumCount = (notification.userInfo?[MLNOfflinePackUserInfoKey.maximumCount]
             as AnyObject).uint64Value ?? 0
@@ -183,14 +211,14 @@ class OfflinePackDownloader {
             errorMessage: "MapLibre tile count limit exceeded: \(maximumCount)",
             errorDetails: nil
         )
-        result(FlutterError(
+        reply(FlutterError(
             code: "mapboxTileCountLimitExceeded",
             message: "MapLibre tile count limit exceeded: \(maximumCount)",
             details: nil
         ))
         if let region = OfflineRegion.fromOfflinePack(pack) {
             OfflineManagerUtils.activePacks.removeValue(forKey: region.id)
-            OfflineManagerUtils.deleteRegion(result: result, id: region.id)
+            OfflineManagerUtils.deleteRegion(result: { _ in }, id: region.id)
         }
     }
 
